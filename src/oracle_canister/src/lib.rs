@@ -1,5 +1,6 @@
 mod canister;
 pub mod error;
+mod evm_canister;
 mod state;
 mod timer;
 

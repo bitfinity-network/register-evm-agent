@@ -9,6 +9,7 @@ edition = "2021"
 
 [workspace.dependencies]
 anyhow = "1.0"
+async-trait = "0.1"
 candid = "0.8"
 # infinityswap.atlassian.net/browse/EPROD-153 - We are currently depending on a commit, will be removed when new version is released
 ethers-core = { git = "https://github.com/infinity-swap/ethers-rs", default-features = false, package = "ethers-core", branch = "evmc_fork" }
@@ -30,6 +31,7 @@ did = { git = "ssh://git@github.com/infinity-swap/evm-canister", package = "did"
 evm_adapter = { git = "ssh://git@github.com/infinity-swap/evm-canister", package = "evm_adapter" }
 dirs = "4.0.0"
 url = { version = "2.3.1", default-features = false }
+mockall = "0.11.4"
 
 [profile.release]
 opt-level = "z"

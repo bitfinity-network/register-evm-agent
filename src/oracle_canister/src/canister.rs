@@ -143,6 +143,21 @@ impl OracleCanister {
         }
     }
 
+    /// Initialize new AggregatorProxy smart contract
+    #[update]
+    pub async fn init_aggregator_proxy(&mut self) -> Result<()> {
+        self.check_owner(ic::caller())?;
+
+        self.state.contracts.init_aggregator_proxy().await
+        
+        #[cfg(target_arch = "wasm32")]
+        crate::timer::wasm32::init_timer(self.state.pair_price);
+    }
+
+    /// Returns the oracle contract address, associated with the given IC token canister principal.
+    #[query]
+    pub fn get_aggregator_proxy_contract_address(&self) -> H160 {}
+
     #[query]
     fn http_request(&self, req: ServeRequest) -> ServeHttpResponse {
         let now = ic::time();
