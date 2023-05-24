@@ -1,19 +1,27 @@
 use std::cell::RefCell;
 
 use async_trait::async_trait;
-use did::error::{EvmError, TransactionPoolError};
-#[cfg(target_arch = "wasm32")]
-use did::BasicAccount;
-use did::{BlockNumber, Transaction, TransactionParams, TransactionReceipt, H160, H256, U256};
-use evmc::ic::api::EvmCanister as Evmc;
-use ic_canister::{canister_call, Canister};
+use candid::Principal;
+use ic_exports::ic_kit::ic;
 use ic_exports::ic_kit::RejectionCode;
 use ic_stable_structures::StableCell;
 use mockall::automock;
 
-use crate::constant::{DEFAULT_GAS_LIMIT, NONCE_MEMORY_ID};
 use crate::error::Error;
-use crate::state::State;
+use crate::evm_canister::{
+    did::{BasicAccount, Transaction, TransactionParams, H160, H256, U256},
+    error::{EvmError, TransactionPoolError},
+};
+use crate::state::{State, NONCE_MEMORY_ID};
+
+pub mod account;
+pub mod did;
+pub mod error;
+
+pub const REGISTRATION_FEE: U256 = U256::from(ethereum_types::U256::from(100_000));
+pub const DEFAULT_GAS_LIMIT: u64 = 30_000_000;
+
+type EvmResult<T> = Result<T, EvmError>;
 
 /// Interface for calling EVMC methods
 #[automock]
@@ -21,20 +29,11 @@ use crate::state::State;
 pub trait EvmCanister: Send {
     async fn transact(&mut self, value: U256, to: H160, data: Vec<u8>) -> Result<H256, Error>;
 
-    async fn send_raw_transaction(&mut self, tx: Transaction) -> Result<H256, Error>;
-
     async fn create_contract(&mut self, value: U256, code: Vec<u8>) -> Result<H256, Error>;
-
-    async fn get_contract_code(&self, address: H160) -> Result<Vec<u8>, Error>;
 
     async fn get_balance(&self, address: H160) -> Result<U256, Error>;
 
     async fn get_transaction_by_hash(&self, tx_hash: H256) -> Result<Option<Transaction>, Error>;
-
-    async fn get_transaction_receipt_by_hash(
-        &self,
-        tx_hash: H256,
-    ) -> Result<Option<TransactionReceipt>, Error>;
 
     async fn deposit(&mut self, to: H160, amount: U256) -> Result<U256, Error>;
 
@@ -47,8 +46,12 @@ pub trait EvmCanister: Send {
 pub struct EvmCanisterImpl {}
 
 impl EvmCanisterImpl {
-    fn get_evmc_canister(&self) -> Evmc {
-        Evmc::from_principal(State::default().config.get_evmc_principal())
+    fn get_evmc_canister() -> EvmCanisterImpl {
+        Self::default()
+    }
+
+    fn get_evm_canister_id(&self) -> Principal {
+        State::default().config.get_evmc_principal()
     }
 
     fn get_nonce(&self) -> U256 {
@@ -74,24 +77,29 @@ impl EvmCanisterImpl {
         result: Result<EvmResult<T>, (RejectionCode, std::string::String)>,
     ) -> Result<T, Error> {
         let result = self.process_call(result)?;
-        if let Err(EvmError::TransactionPool(TransactionPoolError::InvalidNonce {
-            expected, ..
-        })) = &result
-        {
-            NONCE_CELL.with(|nonce| {
-                nonce
-                    .borrow_mut()
-                    .set(expected.clone())
-                    .expect("failed to update nonce");
-            });
+        match result {
+            Err(EvmError::TransactionPool(TransactionPoolError::NonceTooHigh {
+                expected, ..
+            }))
+            | Err(EvmError::TransactionPool(TransactionPoolError::NonceTooLow {
+                expected, ..
+            })) => {
+                NONCE_CELL.with(|nonce| {
+                    nonce
+                        .borrow_mut()
+                        .set(expected.clone())
+                        .expect("failed to update nonce");
+                });
+            }
+            _ => (),
         }
+
         result.map_err(|e| Error::Internal(format!("transaction error: {e}")))
     }
 
     fn get_tx_params(&self, value: U256) -> Result<TransactionParams, Error> {
-        let state = State::default();
         Ok(TransactionParams {
-            from: state.account.get_account()?,
+            from: account::Account::default().get_account()?,
             value,
             gas_limit: DEFAULT_GAS_LIMIT,
             gas_price: None,
@@ -109,107 +117,79 @@ impl EvmCanisterImpl {
     }
 }
 
-type EvmResult<T> = Result<T, EvmError>;
-
 #[async_trait(?Send)]
 impl EvmCanister for EvmCanisterImpl {
     async fn transact(&mut self, value: U256, to: H160, data: Vec<u8>) -> Result<H256, Error> {
-        let mut evmc = self.get_evmc_canister();
         let tx_params = self.get_tx_params(value)?;
 
-        self.process_call_result(
-            canister_call!(
-                evmc.call_message(tx_params, to, hex::encode(data)),
-                EvmResult<H256>
-            )
-            .await,
+        let res: Result<(EvmResult<H256>,), _> = ic::call(
+            self.get_evm_canister_id(),
+            "call_message",
+            (tx_params, to, hex::encode(data)),
         )
-    }
-
-    async fn send_raw_transaction(&mut self, tx: Transaction) -> Result<H256, Error> {
-        let mut evmc = self.get_evmc_canister();
-        self.process_call_result(
-            canister_call!(evmc.send_raw_transaction(tx), EvmResult<H256>).await,
-        )
+        .await;
+        self.process_call_result(res.map(|val| val.0))
     }
 
     async fn create_contract(&mut self, value: U256, code: Vec<u8>) -> Result<H256, Error> {
-        let mut evmc = self.get_evmc_canister();
         let tx_params = self.get_tx_params(value)?;
-        self.process_call_result(
-            canister_call!(
-                evmc.create_contract(tx_params, hex::encode(code)),
-                EvmResult<H256>
-            )
-            .await,
-        )
-    }
 
-    async fn get_contract_code(&self, address: H160) -> Result<Vec<u8>, Error> {
-        let evmc = self.get_evmc_canister();
-        self.process_call_result(
-            canister_call!(
-                evmc.eth_get_code(address, BlockNumber::Latest),
-                EvmResult<String>
-            )
-            .await,
+        let res: Result<(EvmResult<H256>,), _> = ic::call(
+            self.get_evm_canister_id(),
+            "create_contract",
+            (tx_params, hex::encode(code)),
         )
-        .and_then(|code| {
-            hex::decode(code)
-                .map_err(|_| Error::Internal("failed to decode contract code".to_string()))
-        })
+        .await;
+
+        self.process_call_result(res.map(|val| val.0))
     }
 
     async fn get_balance(&self, address: H160) -> Result<U256, Error> {
-        let evmc = self.get_evmc_canister();
-        self.process_call(canister_call!(evmc.account_basic(address), BasicAccount).await)
+        let res: Result<(BasicAccount,), _> =
+            ic::call(self.get_evm_canister_id(), "account_basic", (address,)).await;
+
+        self.process_call(res.map(|val| val.0))
             .map(|acc| acc.balance)
     }
 
     async fn get_transaction_by_hash(&self, tx_hash: H256) -> Result<Option<Transaction>, Error> {
-        let evmc = self.get_evmc_canister();
-        self.process_call(
-            canister_call!(
-                evmc.eth_get_transaction_by_hash(tx_hash),
-                Option<Transaction>
-            )
-            .await,
+        let res: Result<(Option<Transaction>,), _> = ic::call(
+            self.get_evm_canister_id(),
+            "eth_get_transaction_by_hash",
+            (tx_hash,),
         )
-    }
+        .await;
 
-    async fn get_transaction_receipt_by_hash(
-        &self,
-        tx_hash: H256,
-    ) -> Result<Option<TransactionReceipt>, Error> {
-        let evmc = self.get_evmc_canister();
-        self.process_call_result(
-            canister_call!(
-                evmc.eth_get_transaction_receipt(tx_hash),
-                EvmResult<Option<TransactionReceipt>>
-            )
-            .await,
-        )
+        self.process_call(res.map(|val| val.0))
     }
 
     async fn deposit(&mut self, to: H160, amount: U256) -> Result<U256, Error> {
-        let mut evmc = self.get_evmc_canister();
-        self.process_call_result(
-            canister_call!(evmc.deposit_tokens(to, amount), EvmResult<U256>).await,
-        )
+        let res: Result<(EvmResult<U256>,), _> =
+            ic::call(self.get_evm_canister_id(), "deposit_tokens", (to, amount)).await;
+
+        self.process_call_result(res.map(|val| val.0))
     }
 
     async fn register_ic_agent(&mut self, transaction: Transaction) -> Result<(), Error> {
-        let mut evmc = self.get_evmc_canister();
-        self.process_call_result(
-            canister_call!(evmc.register_ic_agent(transaction), EvmResult<()>).await,
+        let res: Result<(EvmResult<()>,), _> = ic::call(
+            self.get_evm_canister_id(),
+            "register_ic_agent",
+            (transaction,),
         )
+        .await;
+
+        self.process_call_result(res.map(|val| val.0))
     }
 
     async fn verify_registration(&mut self, signing_key: Vec<u8>) -> Result<(), Error> {
-        let mut evmc = self.get_evmc_canister();
-        self.process_call_result(
-            canister_call!(evmc.verify_registration(signing_key), EvmResult<()>).await,
+        let res: Result<(EvmResult<()>,), _> = ic::call(
+            self.get_evm_canister_id(),
+            "verify_registration",
+            (signing_key,),
         )
+        .await;
+
+        self.process_call_result(res.map(|val| val.0))
     }
 }
 

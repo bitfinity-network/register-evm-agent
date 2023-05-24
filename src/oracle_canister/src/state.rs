@@ -6,6 +6,8 @@ use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_stable_structures::{BoundedStorable, Storable};
 pub use pair_price::PairPrice;
 
+pub use crate::evm_canister::EvmCanisterImpl;
+
 mod config;
 pub mod http;
 mod pair_price;
@@ -14,6 +16,8 @@ pub const CONFIG_MEMORY_ID: MemoryId = MemoryId::new(80);
 pub const PRICE_MEMORY_ID: MemoryId = MemoryId::new(81);
 pub const LATEST_TIME_MEMORY_ID: MemoryId = MemoryId::new(82);
 pub const PAIR_MEMORY_ID: MemoryId = MemoryId::new(83);
+pub const ACCOUNT_MEMORY_ID: MemoryId = MemoryId::new(84);
+pub const NONCE_MEMORY_ID: MemoryId = MemoryId::new(85);
 pub const PRICE_MULTIPLE: f64 = 1_0000_0000.0;
 
 /// State of a minter canister.
