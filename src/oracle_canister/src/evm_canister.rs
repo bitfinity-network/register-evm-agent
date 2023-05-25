@@ -15,10 +15,11 @@ use crate::evm_canister::{
 use crate::state::{State, NONCE_MEMORY_ID};
 
 pub mod account;
+pub mod contract;
 pub mod did;
 pub mod error;
 
-pub const REGISTRATION_FEE: U256 = U256::from(ethereum_types::U256::from(100_000));
+pub const REGISTRATION_FEE: u64 = 100_000;
 pub const DEFAULT_GAS_LIMIT: u64 = 30_000_000;
 
 type EvmResult<T> = Result<T, EvmError>;
@@ -46,10 +47,6 @@ pub trait EvmCanister: Send {
 pub struct EvmCanisterImpl {}
 
 impl EvmCanisterImpl {
-    fn get_evmc_canister() -> EvmCanisterImpl {
-        Self::default()
-    }
-
     fn get_evm_canister_id(&self) -> Principal {
         State::default().config.get_evmc_principal()
     }
@@ -77,7 +74,7 @@ impl EvmCanisterImpl {
         result: Result<EvmResult<T>, (RejectionCode, std::string::String)>,
     ) -> Result<T, Error> {
         let result = self.process_call(result)?;
-        match result {
+        match &result {
             Err(EvmError::TransactionPool(TransactionPoolError::NonceTooHigh {
                 expected, ..
             }))
@@ -107,7 +104,7 @@ impl EvmCanisterImpl {
         })
     }
 
-    pub fn reset(&self) {
+    pub fn _reset(&self) {
         NONCE_CELL.with(|nonce| {
             nonce
                 .borrow_mut()

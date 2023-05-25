@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 
-use candid::{CandidType, Deserialize, Principal};
-use ic_exports::ic_kit::ic;
+use candid::{CandidType, Deserialize};
 use ic_stable_structures::{StableCell, Storable};
 
 use crate::error::{Error, Result};
@@ -31,7 +30,6 @@ impl Account {
     #[allow(dead_code)]
     pub async fn register_account(
         &mut self,
-        evmc: Principal,
         transaction: Transaction,
         signing_key: Vec<u8>,
     ) -> Result<()> {
@@ -54,29 +52,24 @@ impl Account {
 
         // deposit tokens to from address
         let address = transaction.from.clone();
-
-        if let Err(err) = evm_impl.deposit(address.clone(), REGISTRATION_FEE).await {
+        if let Err(err) = evm_impl
+            .deposit(address.clone(), REGISTRATION_FEE.into())
+            .await
+        {
             self.reset();
             return Err(err);
         }
 
         // register ic agent
-
-        if let Err(err) = res {
+        if let Err(err) = evm_impl.register_ic_agent(transaction).await {
             self.reset();
-            return Err(Error::Internal(format!(
-                "rejection code: {:?}, msg: {:?}",
-                err.0, err.1
-            )));
+            return Err(err);
         }
 
         // verify the key
-        if let Err(err) = ic::call(evmc, "verify_registration", (signing_key,)).await {
+        if let Err(err) = evm_impl.verify_registration(signing_key).await {
             self.reset();
-            return Err(Error::Internal(format!(
-                "rejection code: {:?}, msg: {:?}",
-                err.0, err.1
-            )));
+            return Err(err);
         }
 
         ACCOUNT_DATA_CELL.with(|account| {

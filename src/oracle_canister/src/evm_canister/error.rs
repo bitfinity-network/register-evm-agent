@@ -9,8 +9,6 @@ use thiserror::Error;
 
 use super::did::{BlockNumber, U256};
 
-pub type Result<T> = std::result::Result<T, EvmError>;
-
 #[derive(Debug, Error, Deserialize, CandidType, Eq, PartialEq)]
 pub enum EvmError {
     #[error("internal error: {0}")]

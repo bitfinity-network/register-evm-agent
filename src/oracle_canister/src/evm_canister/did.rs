@@ -359,6 +359,12 @@ impl From<ethereum_types::U64> for U64 {
     }
 }
 
+impl From<u64> for U256 {
+    fn from(value: u64) -> Self {
+        Self(value.into())
+    }
+}
+
 impl From<ethereum_types::U256> for U256 {
     fn from(v: ethereum_types::U256) -> Self {
         Self(v)

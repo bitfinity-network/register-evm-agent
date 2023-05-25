@@ -1,6 +1,6 @@
 [workspace]
 # members = ["src/oracle_canister", "src/register_agent"]
-members = ["src/oracle_canister"]
+members = ["src/oracle_canister", "src/solidity-helper"]
 
 [workspace.package]
 version = "0.1.0"

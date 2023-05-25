@@ -1,3 +1,4 @@
+mod build_data;
 mod canister;
 pub mod error;
 mod evm_canister;
