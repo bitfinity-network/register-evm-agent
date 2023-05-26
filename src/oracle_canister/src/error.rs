@@ -26,6 +26,9 @@ pub enum Error {
 
     #[error("http outcall error: {0}")]
     HttpError(String),
+
+    #[error("contract already registered")]
+    ContractAlreadyRegistered,
 }
 
 impl From<StableError> for Error {

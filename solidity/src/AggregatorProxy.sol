@@ -26,8 +26,8 @@ contract AggregatorProxy is AggregatorProxyInterface, ConfirmedOwner {
   event AggregatorProposed(address indexed current, address indexed proposed);
   event AggregatorConfirmed(address indexed previous, address indexed latest);
 
-  constructor(address aggregatorAddress) ConfirmedOwner(msg.sender) {
-    setAggregator(aggregatorAddress);
+  constructor() ConfirmedOwner(msg.sender) {
+    setAggregator(address(this));
   }
 
   /**

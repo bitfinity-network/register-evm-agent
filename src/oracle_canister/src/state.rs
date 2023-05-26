@@ -18,6 +18,7 @@ pub const LATEST_TIME_MEMORY_ID: MemoryId = MemoryId::new(82);
 pub const PAIR_MEMORY_ID: MemoryId = MemoryId::new(83);
 pub const ACCOUNT_MEMORY_ID: MemoryId = MemoryId::new(84);
 pub const NONCE_MEMORY_ID: MemoryId = MemoryId::new(85);
+pub const TOKENS_REGISTRATION_STATE_MEMORY_ID: MemoryId = MemoryId::new(86);
 pub const PRICE_MULTIPLE: f64 = 1_0000_0000.0;
 
 /// State of a minter canister.

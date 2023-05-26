@@ -3065,6 +3065,7 @@ dependencies = [
  "is20-token",
  "jsonrpc-core",
  "mockall",
+ "once_cell",
  "rlp",
  "serde",
  "serde_bytes",
