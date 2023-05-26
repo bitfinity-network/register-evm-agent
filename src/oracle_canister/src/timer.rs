@@ -21,6 +21,7 @@ pub mod wasm32 {
             ic_cdk::spawn(async move {
                 let res = sync_coingecko_price(pairs, &mut pair_price).await;
                 ic::print(format!("res: {:?}", res));
+                // call evmc oracle smart contract to
             })
         });
     }
