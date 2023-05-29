@@ -1,19 +1,12 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::default;
 
-use async_trait::async_trait;
-use candid::{CandidType, Principal};
 use ethers_core::abi::{Constructor, Function, Param, ParamType, StateMutability, Token};
-use ethers_core::types::Signature;
-use ic_exports::ic_kit::ic;
-use ic_stable_structures::{BoundedStorable, StableBTreeMap, StableCell, Storable};
-use once_cell::sync::Lazy;
-use serde::Deserialize;
+use ic_stable_structures::{BoundedStorable, StableCell, Storable};
 
 use crate::build_data::get_aggregator_proxy_smart_contract_code;
 use crate::error::{Error, Result};
-use crate::evm_canister::did::{Transaction, TransactionReceipt, H160, H256, U256, U64};
+use crate::evm_canister::did::{TransactionReceipt, H160, H256, U256, U64};
 use crate::evm_canister::EvmCanisterImpl;
 use crate::state::{
     CONTRACT_REGISTRATION_STATE_MEMORY_ID, CONTRACT_REGISTRATION_TX_HASH_MEMORY_ID,
@@ -125,16 +118,24 @@ impl ContractService {
             CONTRACT_REGISTRATION_STATE.with(|data| {
                 data.borrow_mut()
                     .set(ContractStatus::Registered(addr.clone()))
+                    .expect("set CONTRACT_REGISTRATION_STATE error")
             });
 
-            CONTRACT_REGISTRATION_TX_HASH.with(|data| data.borrow_mut().set(H256::zero()));
-            return Ok(addr);
+            CONTRACT_REGISTRATION_TX_HASH.with(|data| {
+                data.borrow_mut()
+                    .set(H256::zero())
+                    .expect("set CONTRACT_REGISTRATION_TX_HASH error")
+            });
+            Ok(addr)
         } else {
             // todo check out whether the tx failed or tx in memory pool
             // if tx failed:
-            CONTRACT_REGISTRATION_STATE
-                .with(|data| data.borrow_mut().set(ContractStatus::Unregistered));
-            return Err(Error::Internal("evm canister: tx failed.".to_string()));
+            CONTRACT_REGISTRATION_STATE.with(|data| {
+                data.borrow_mut()
+                    .set(ContractStatus::Unregistered)
+                    .expect("set CONTRACT_REGISTRATION_STATE error")
+            });
+            Err(Error::Internal("evm canister: tx failed.".to_string()))
         }
     }
 
@@ -218,7 +219,7 @@ impl ContractService {
             constant: None,
             state_mutability: StateMutability::NonPayable,
         };
-        let pairs = pairs.into_iter().map(|p| Token::String(p)).collect();
+        let pairs = pairs.into_iter().map(Token::String).collect();
         let timestamps = timestamps.into_iter().map(|t| Token::Uint(t.0)).collect();
         let prices = prices.into_iter().map(|p| Token::Uint(p.0)).collect();
         let args = [
@@ -245,7 +246,7 @@ impl ContractService {
 
     pub fn get_contract(&self) -> Result<H160> {
         CONTRACT_REGISTRATION_STATE.with(|c| {
-            if let ContractStatus::Registered(contract) = c.borrow().get().clone() {
+            if let ContractStatus::Registered(contract) = c.borrow().get() {
                 Ok(contract.clone())
             } else {
                 Err(Error::ContractNotRegistered)

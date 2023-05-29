@@ -114,6 +114,6 @@ fn coin_name_to_symbol(name: String) -> String {
         "pizabrc" => "PIZA(Ordinals)-USD".to_string(),
         "biso" => "BISO-USD".to_string(),
         "meme-brc-20" => "MEME(Ordinals)-USD".to_string(),
-        _ => format!("{}-USD", name),
+        _ => format!("{name}-USD"),
     }
 }

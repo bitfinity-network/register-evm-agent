@@ -175,7 +175,7 @@ impl U64 {
             .map(Into::into)
     }
 
-    pub fn to_hex_str(&self) -> String {
+    pub fn to_hex_str(self) -> String {
         format!("0x{self:x}")
     }
 
@@ -191,7 +191,7 @@ impl U64 {
         self.0.is_zero()
     }
 
-    pub fn to_big_endian(&self) -> Vec<u8> {
+    pub fn to_big_endian(self) -> Vec<u8> {
         let mut buffer = vec![0; 8];
         self.0.to_big_endian(&mut buffer);
         buffer
@@ -201,7 +201,7 @@ impl U64 {
         Self(ethereum_types::U64::from_big_endian(slice))
     }
 
-    pub fn to_little_endian(&self) -> Vec<u8> {
+    pub fn to_little_endian(self) -> Vec<u8> {
         let mut buffer = vec![0; 8];
         self.0.to_little_endian(&mut buffer);
         buffer
@@ -768,8 +768,6 @@ pub struct TransactionReceiptLog {
 pub struct Bloom(pub ethereum_types::Bloom);
 
 impl Bloom {
-    pub const FILTER_LENGTH_BYTES: usize = 256;
-
     pub fn zeros() -> Bloom {
         Bloom(ethereum_types::Bloom::zero())
     }

@@ -5,7 +5,7 @@ use ic_exports::ic_kit::ic;
 use ic_exports::Principal;
 
 use crate::error::{Error, Result};
-use crate::evm_canister::did::{H160, H256, U256};
+use crate::evm_canister::did::{Transaction, H160, H256, U256};
 use crate::state::http::{http, HttpRequest as ServeRequest, HttpResponse as ServeHttpResponse};
 use crate::state::{PairKey, Settings, State};
 use crate::timer::{sync_coinbase_price, sync_coingecko_price, transform};
@@ -129,7 +129,7 @@ impl OracleCanister {
         self.check_owner(ic::caller())?;
 
         let mut pair_keys = Vec::new();
-        for pair_key in pairs.into_iter().map(|p| PairKey(p)) {
+        for pair_key in pairs.into_iter().map(PairKey) {
             if !self.state.pair_price.is_exist(&pair_key) {
                 return Err(Error::PairNotExist);
             }
@@ -142,6 +142,25 @@ impl OracleCanister {
             }
             ApiType::Coingecko => sync_coingecko_price(pair_keys, &mut self.state.pair_price).await,
         }
+    }
+
+    #[update]
+    pub async fn register_self_in_evmc(
+        &mut self,
+        transaction: Transaction,
+        signing_key: Vec<u8>,
+    ) -> Result<()> {
+        self.check_owner(ic::caller())?;
+
+        self.state
+            .self_account
+            .register_account(transaction, signing_key)
+            .await
+    }
+
+    #[query]
+    pub fn get_self_address_in_evmc(&self) -> Result<H160> {
+        self.state.self_account.get_account()
     }
 
     /// Initialize new AggregatorSingle smart contract
