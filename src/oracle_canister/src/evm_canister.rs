@@ -9,7 +9,7 @@ use mockall::automock;
 
 use crate::error::Error;
 use crate::evm_canister::{
-    did::{BasicAccount, Transaction, TransactionParams, H160, H256, U256},
+    did::{BasicAccount, Transaction, TransactionParams, TransactionReceipt, H160, H256, U256},
     error::{EvmError, TransactionPoolError},
 };
 use crate::state::{State, NONCE_MEMORY_ID};
@@ -35,6 +35,11 @@ pub trait EvmCanister: Send {
     async fn get_balance(&self, address: H160) -> Result<U256, Error>;
 
     async fn get_transaction_by_hash(&self, tx_hash: H256) -> Result<Option<Transaction>, Error>;
+
+    async fn get_transaction_receipt_by_hash(
+        &self,
+        tx_hash: H256,
+    ) -> Result<Option<TransactionReceipt>, Error>;
 
     async fn deposit(&mut self, to: H160, amount: U256) -> Result<U256, Error>;
 
@@ -103,15 +108,6 @@ impl EvmCanisterImpl {
             nonce: self.get_nonce(),
         })
     }
-
-    pub fn _reset(&self) {
-        NONCE_CELL.with(|nonce| {
-            nonce
-                .borrow_mut()
-                .set(U256::one())
-                .expect("failed to update nonce");
-        });
-    }
 }
 
 #[async_trait(?Send)]
@@ -153,6 +149,20 @@ impl EvmCanister for EvmCanisterImpl {
         let res: Result<(Option<Transaction>,), _> = ic::call(
             self.get_evm_canister_id(),
             "eth_get_transaction_by_hash",
+            (tx_hash,),
+        )
+        .await;
+
+        self.process_call(res.map(|val| val.0))
+    }
+
+    async fn get_transaction_receipt_by_hash(
+        &self,
+        tx_hash: H256,
+    ) -> Result<Option<TransactionReceipt>, Error> {
+        let res: Result<(Option<TransactionReceipt>,), _> = ic::call(
+            self.get_evm_canister_id(),
+            "eth_get_transaction_receipt",
             (tx_hash,),
         )
         .await;

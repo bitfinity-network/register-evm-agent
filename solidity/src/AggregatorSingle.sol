@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "./ConfirmedOwner.sol";
 
@@ -96,6 +97,32 @@ contract AggregatorSingle is AggregatorInterface, AggregatorV3Interface, Confirm
         unUsedRoundId[pairId] += 1;
 
         emit AnswerUpdated(answer, roundId, timestamp, pair);
+    }
+
+    function updateAnswers(string[] calldata _pairs, uint256[] calldata _timestamps, uint256[] calldata _answers)
+        external
+        onlyOwner
+    {
+        require(_pairs.length == _timestamps.length, "pairs and timestamps length mismatch");
+        require(_answers.length == _timestamps.length, "answers and timestamps length mismatch");
+
+        for (uint256 i = 0; i < _pairs.length; ++i) {
+            string calldata pair = _pairs[i];
+            uint256 timestamp = _timestamps[i];
+            uint256 answer = _answers[i];
+
+            require(exists(pair), "pair don't exists");
+            uint256 pairId = pairToId[pair];
+            uint256 roundId = unUsedRoundId[pairId];
+
+            Answer storage a = answers[roundId][pairId];
+            a.timestamp = timestamp;
+            a.value = answer;
+
+            unUsedRoundId[pairId] += 1;
+
+            emit AnswerUpdated(answer, roundId, timestamp, pair);
+        }
     }
 
     function exists(string calldata pair) public view returns (bool) {

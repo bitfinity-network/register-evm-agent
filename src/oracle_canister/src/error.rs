@@ -29,6 +29,9 @@ pub enum Error {
 
     #[error("contract already registered")]
     ContractAlreadyRegistered,
+
+    #[error("contract doesn't registered")]
+    ContractNotRegistered,
 }
 
 impl From<StableError> for Error {

@@ -6,6 +6,8 @@ use ic_exports::stable_structures::memory_manager::MemoryId;
 use ic_stable_structures::{BoundedStorable, Storable};
 pub use pair_price::PairPrice;
 
+pub use crate::evm_canister::account::Account;
+use crate::evm_canister::contract::ContractService;
 pub use crate::evm_canister::EvmCanisterImpl;
 
 mod config;
@@ -18,7 +20,8 @@ pub const LATEST_TIME_MEMORY_ID: MemoryId = MemoryId::new(82);
 pub const PAIR_MEMORY_ID: MemoryId = MemoryId::new(83);
 pub const ACCOUNT_MEMORY_ID: MemoryId = MemoryId::new(84);
 pub const NONCE_MEMORY_ID: MemoryId = MemoryId::new(85);
-pub const TOKENS_REGISTRATION_STATE_MEMORY_ID: MemoryId = MemoryId::new(86);
+pub const CONTRACT_REGISTRATION_STATE_MEMORY_ID: MemoryId = MemoryId::new(86);
+pub const CONTRACT_REGISTRATION_TX_HASH_MEMORY_ID: MemoryId = MemoryId::new(87);
 pub const PRICE_MULTIPLE: f64 = 1_0000_0000.0;
 
 /// State of a minter canister.
@@ -29,6 +32,11 @@ pub struct State {
 
     /// Set of token pairs like (ic_token_principal, evm_token_contract_address);
     pub pair_price: PairPrice,
+
+    /// oracle canister(self)'s account in evm canister
+    pub self_account: Account,
+
+    pub contract: ContractService,
 }
 
 impl State {

@@ -667,3 +667,139 @@ pub struct BasicAccount {
     /// Account nonce.
     pub nonce: U256,
 }
+
+/// "Receipt" of an executed transaction: details of its execution.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+pub struct TransactionReceipt {
+    /// Transaction hash.
+    #[serde(rename = "transactionHash")]
+    pub transaction_hash: H256,
+    /// Index within the block.
+    #[serde(rename = "transactionIndex")]
+    pub transaction_index: U64,
+    /// Hash of the block this transaction was included within.
+    #[serde(rename = "blockHash")]
+    pub block_hash: H256,
+    /// Number of the block this transaction was included within.
+    #[serde(rename = "blockNumber")]
+    pub block_number: U64,
+    /// address of the sender.
+    pub from: H160,
+    // address of the receiver. null when its a contract creation transaction.
+    pub to: Option<H160>,
+    /// Cumulative gas used within the block after this was executed.
+    #[serde(rename = "cumulativeGasUsed")]
+    pub cumulative_gas_used: U256,
+    /// Gas used by this transaction alone.
+    ///
+    /// Gas used is `None` if the the client is running in light client mode.
+    #[serde(rename = "gasUsed")]
+    pub gas_used: Option<U256>,
+    /// Contract address created, or `None` if not a deployment.
+    #[serde(rename = "contractAddress")]
+    pub contract_address: Option<H160>,
+    /// Logs generated within this transaction.
+    pub logs: Vec<TransactionReceiptLog>,
+    /// Status: either 1 (success) or 0 (failure). Only present after activation of [EIP-658](https://eips.ethereum.org/EIPS/eip-658)
+    pub status: Option<U64>,
+    /// State root. Only present before activation of [EIP-658](https://eips.ethereum.org/EIPS/eip-658)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub root: Option<H256>,
+    /// Logs bloom
+    #[serde(rename = "logsBloom")]
+    pub logs_bloom: Bloom,
+    /// Transaction type, Some(1) for AccessList transaction, None for Legacy
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub transaction_type: Option<U64>,
+    /// The price paid post-execution by the transaction (i.e. base fee + priority fee).
+    /// Both fields in 1559-style transactions are *maximums* (max fee + max priority fee), the
+    /// amount that's actually paid by users can only be determined post-execution
+    #[serde(
+        rename = "effectiveGasPrice",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub effective_gas_price: Option<U256>,
+}
+
+/// TransactionReceipt Logs
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, CandidType, Default)]
+pub struct TransactionReceiptLog {
+    /// The contract that emitted the log
+    pub address: H160,
+
+    /// Topics: Array of 0 to 4 32 Bytes of indexed log arguments.
+    /// (In solidity: The first topic is the hash of the signature of the event
+    /// (e.g. `Deposit(address,bytes32,uint256)`), except you declared the event
+    /// with the anonymous specifier.)
+    pub topics: Vec<H256>,
+
+    /// Data
+    pub data: Bytes,
+
+    /// Transaction Hash
+    #[serde(rename = "transactionHash")]
+    pub transaction_hash: H256,
+
+    /// Block Number
+    #[serde(rename = "blockNumber")]
+    pub block_number: U64,
+
+    /// Block Hash
+    #[serde(rename = "blockHash")]
+    pub block_hash: H256,
+
+    /// Integer of the transactions index position log was created from.
+    /// None when it's a pending log.
+    #[serde(rename = "transactionIndex")]
+    pub transaction_index: U64,
+
+    /// True when the log was removed, due to a chain reorganization.
+    /// false if it's a valid log.
+    #[serde(default)]
+    pub removed: bool,
+
+    /// Integer of the log index position in the block. None if it's a pending log.
+    #[serde(rename = "logIndex")]
+    pub log_index: U256,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Bloom(pub ethereum_types::Bloom);
+
+impl Bloom {
+    pub const FILTER_LENGTH_BYTES: usize = 256;
+
+    pub fn zeros() -> Bloom {
+        Bloom(ethereum_types::Bloom::zero())
+    }
+
+    pub fn to_hex_str(&self) -> String {
+        format!("0x{self:x}")
+    }
+}
+
+impl Default for Bloom {
+    fn default() -> Self {
+        Bloom::zeros()
+    }
+}
+
+impl std::fmt::LowerHex for Bloom {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl CandidType for Bloom {
+    fn _ty() -> candid::types::Type {
+        candid::types::Type::Text
+    }
+
+    fn idl_serialize<S>(&self, serializer: S) -> Result<(), S::Error>
+    where
+        S: candid::types::Serializer,
+    {
+        serializer.serialize_text(&self.to_hex_str())
+    }
+}

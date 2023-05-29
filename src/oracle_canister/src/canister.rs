@@ -5,6 +5,7 @@ use ic_exports::ic_kit::ic;
 use ic_exports::Principal;
 
 use crate::error::{Error, Result};
+use crate::evm_canister::did::{H160, H256, U256};
 use crate::state::http::{http, HttpRequest as ServeRequest, HttpResponse as ServeHttpResponse};
 use crate::state::{PairKey, Settings, State};
 use crate::timer::{sync_coinbase_price, sync_coingecko_price, transform};
@@ -143,20 +144,57 @@ impl OracleCanister {
         }
     }
 
-    // /// Initialize new AggregatorProxy smart contract
-    // #[update]
-    // pub async fn init_aggregator_proxy(&mut self) -> Result<()> {
-    //     self.check_owner(ic::caller())?;
+    /// Initialize new AggregatorSingle smart contract
+    #[update]
+    pub async fn deploy_aggregator_contract(&mut self) -> Result<H256> {
+        self.check_owner(ic::caller())?;
 
-    //     self.state.contracts.init_aggregator_proxy().await
+        self.state.contract.init_contract().await
+    }
 
-    //     #[cfg(target_arch = "wasm32")]
-    //     crate::timer::wasm32::init_timer(self.state.pair_price);
-    // }
+    #[update]
+    pub async fn confirm_aggregator_contract(&mut self) -> Result<H160> {
+        self.check_owner(ic::caller())?;
 
-    // /// Returns the oracle contract address, associated with the given IC token canister principal.
-    // #[query]
-    // pub fn get_aggregator_proxy_contract_address(&self) -> H160 {}
+        self.state.contract.confirm_contract_address().await
+    }
+
+    /// Returns the oracle contract address, associated with the given IC token canister principal.
+    #[query]
+    pub fn get_aggregator_contract_address(&self) -> Result<H160> {
+        self.state.contract.get_contract()
+    }
+
+    #[update]
+    pub async fn add_pair_in_aggregator(
+        &self,
+        pair: String,
+        decimal: U256,
+        description: String,
+        version: U256,
+    ) -> Result<H256> {
+        self.check_owner(ic::caller())?;
+
+        self.state
+            .contract
+            .add_pair(pair, decimal, description, version)
+            .await
+    }
+
+    #[update]
+    pub async fn update_answers(
+        &self,
+        pairs: Vec<String>,
+        timestamps: Vec<U256>,
+        prices: Vec<U256>,
+    ) -> Result<H256> {
+        self.check_owner(ic::caller())?;
+
+        self.state
+            .contract
+            .update_answers(pairs, timestamps, prices)
+            .await
+    }
 
     #[query]
     fn http_request(&self, req: ServeRequest) -> ServeHttpResponse {
