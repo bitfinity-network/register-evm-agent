@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use ethers_core::abi::{Constructor, Function, Param, ParamType, StateMutability, Token};
 use ic_stable_structures::{BoundedStorable, StableCell, Storable};
 
-use crate::build_data::get_aggregator_proxy_smart_contract_code;
+use crate::build_data::get_aggregator_single_smart_contract_code;
 use crate::error::{Error, Result};
 use crate::evm_canister::did::{TransactionReceipt, H160, H256, U256, U64};
 use crate::evm_canister::EvmCanisterImpl;
@@ -53,6 +53,7 @@ impl BoundedStorable for ContractStatus {
 pub struct ContractService {}
 
 impl ContractService {
+    // deploy the AggregatorSingle contract to evmc, and stored the tx hash.
     pub async fn init_contract(&mut self) -> Result<H256> {
         // Check if the contract is already registered or pending
         // Note that there are no await points between this check and create contract
@@ -70,7 +71,7 @@ impl ContractService {
             return Err(Error::ContractAlreadyRegistered);
         }
 
-        let contract = get_aggregator_proxy_smart_contract_code()?;
+        let contract = get_aggregator_single_smart_contract_code()?;
 
         let constructor = Constructor { inputs: vec![] };
         let contract_data = constructor.encode_input(contract, &[]).map_err(|e| {
@@ -100,6 +101,7 @@ impl ContractService {
         Ok(tx_hash)
     }
 
+    // Make sure the deployment is successful and get the contract address from the transaction receipt
     pub async fn confirm_contract_address(&mut self) -> Result<H160> {
         let hash = CONTRACT_REGISTRATION_TX_HASH
             .with(|c| c.borrow().get().clone())
@@ -128,7 +130,7 @@ impl ContractService {
             });
             Ok(addr)
         } else {
-            // todo check out whether the tx failed or tx in memory pool
+            // need to check out whether the tx failed or tx in memory pool
             // if tx failed:
             CONTRACT_REGISTRATION_STATE.with(|data| {
                 data.borrow_mut()
@@ -139,6 +141,7 @@ impl ContractService {
         }
     }
 
+    /// Call the Aggregator contract in evmc to increase the currency price pairs supported by the aggregator
     #[allow(deprecated)]
     pub async fn add_pair(
         &self,
@@ -187,6 +190,7 @@ impl ContractService {
         Self::call_contract_func(&add_pair_func, &args, contract).await
     }
 
+    /// Call the Aggregator contract in evmc to update the supported currency price pairs.
     #[allow(deprecated)]
     pub async fn update_answers(
         &self,

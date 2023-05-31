@@ -24,10 +24,10 @@ pub const CONTRACT_REGISTRATION_STATE_MEMORY_ID: MemoryId = MemoryId::new(86);
 pub const CONTRACT_REGISTRATION_TX_HASH_MEMORY_ID: MemoryId = MemoryId::new(87);
 pub const PRICE_MULTIPLE: f64 = 1_0000_0000.0;
 
-/// State of a minter canister.
+/// State of a oracle canister.
 #[derive(Default)]
 pub struct State {
-    /// Minter canister configuration.
+    /// oracle canister configuration.
     pub config: Config,
 
     /// Set of token pairs like (ic_token_principal, evm_token_contract_address);

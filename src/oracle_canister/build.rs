@@ -4,14 +4,14 @@ fn main() {
     let contracts =
         compile_solidity_contracts(None, None).expect("Should compile solidity smart contracts");
 
-    let aggregator_proxy_contract_hex = &contracts
-        .get("AggregatorProxy")
-        .expect("Cannot find the AggregatorProxy contract")
+    let aggregator_single_contract_hex = &contracts
+        .get("AggregatorSingle")
+        .expect("Cannot find the AggregatorSingle contract")
         .bytecode_hex;
 
     set_var(
-        "BUILD_SMART_CONTRACT_AGGREGATOR_PROXY_HEX_CODE",
-        aggregator_proxy_contract_hex,
+        "BUILD_SMART_CONTRACT_AGGREGATOR_SINGLE_HEX_CODE",
+        aggregator_single_contract_hex,
     );
 }
 

@@ -15,7 +15,7 @@ use super::EvmCanister;
 pub struct Account {}
 
 impl Account {
-    /// Returns the EMVC account of this canister if registered
+    /// Returns this canister's account in evmc if registered
     pub fn get_account(&self) -> Result<H160> {
         ACCOUNT_DATA_CELL.with(|account_data| {
             if let AccountState::Registered(address) = account_data.borrow().get() {
@@ -26,7 +26,7 @@ impl Account {
         })
     }
 
-    /// Runs the procedure of registering the EVMC account
+    /// Runs the procedure of registering this canister's account in evmc.
     #[allow(dead_code)]
     pub async fn register_account(
         &mut self,

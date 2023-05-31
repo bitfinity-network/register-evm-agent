@@ -36,3 +36,10 @@ dfx canister call oracle_canister add_pair '("meme-brc-20")'
 ```
 
 Open link: `http://127.0.0.1:8000/?canisterId=<Oracle_Canister_Id>` such as `http://127.0.0.1:8000/?canisterId=bnz7o-iuaaa-aaaaa-qaaaa-cai` in browser. 
+
+## work with test evmc
+```sh
+dfx build oracle_canister --network ic
+
+dfx canister install oracle_canister --argument "record { evmc_principal=principal \"4fe7g-7iaaa-aaaak-aegcq-cai\";owner=principal \"$(dfx identity get-principal)\"}" -m=upgrade --network ic
+

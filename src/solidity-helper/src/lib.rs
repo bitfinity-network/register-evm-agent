@@ -171,17 +171,20 @@ mod tests {
         assert!(path.is_dir());
 
         let paths = contract_paths(path).unwrap();
-        let precompiles_path = paths.get("TestContractWithPrecompiles").unwrap();
+        let precompiles_path = paths.get("AggregatorSingle").unwrap();
         assert!(precompiles_path.exists());
         assert!(precompiles_path.is_file());
     }
 
     #[test]
-    fn should_build_the_aggregator_proxy_smart_contract() {
+    fn should_build_the_aggregator_single_smart_contract() {
         let contracts = compile_solidity_contracts(None, None).unwrap();
-        let contract = contracts.get("TestContractWithPrecompiles").unwrap();
+        let contract = contracts.get("AggregatorSingle").unwrap();
         assert!(!contract.bytecode.is_empty());
         assert!(!contract.deployed_bytecode.is_empty());
-        assert!(contract.method_identifiers.get("do_ripemd160()").is_some());
+        assert!(contract
+            .method_identifiers
+            .get("decimals(string)")
+            .is_some());
     }
 }

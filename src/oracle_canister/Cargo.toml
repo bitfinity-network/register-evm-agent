@@ -30,8 +30,6 @@ rlp = { workspace = true }
 jsonrpc-core = { workspace = true }
 once_cell = { workspace = true }
 
-[dev-dependencies]
-tokio = { workspace = true }
 
 [build-dependencies]
 solidity-helper = { path = "../solidity-helper" }

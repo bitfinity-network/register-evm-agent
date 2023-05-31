@@ -7,7 +7,7 @@ use ic_stable_structures::{StableCell, Storable};
 use super::Settings;
 use crate::state::CONFIG_MEMORY_ID;
 
-/// Minter canister configuration.
+/// Oracle canister configuration.
 #[derive(Default)]
 pub struct Config {}
 
@@ -31,12 +31,12 @@ impl Config {
         self.update_data(|data| data.owner = owner);
     }
 
-    /// Returns principal of EVM canister with which the minter canister works.
+    /// Returns principal of EVM canister with which the oracle canister works.
     pub fn get_evmc_principal(&self) -> Principal {
         self.with_data(|data| data.get().evmc_principal)
     }
 
-    /// Sets principal of EVM canister with which the minter canister works.
+    /// Sets principal of EVM canister with which the oracle canister works.
     pub fn set_evmc_principal(&mut self, evmc: Principal) {
         self.update_data(|data| data.evmc_principal = evmc);
     }

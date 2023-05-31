@@ -200,9 +200,9 @@ mod tests {
 
         assert_eq!(
             pairs
-                .add_pair(PairKey("12345678901234567".to_string()))
+                .add_pair(PairKey("123456789012345678901234567890123".to_string()))
                 .unwrap_err(),
-            Error::PairKeyTooLong(17)
+            Error::PairKeyTooLong(33)
         );
     }
 

@@ -1,13 +1,18 @@
+use std::time::Duration;
+
 use candid::{CandidType, Deserialize};
 use ic_canister::{generate_idl, init, post_upgrade, query, update, Canister, Idl, PreUpdate};
+use ic_exports::ic_cdk;
 use ic_exports::ic_cdk::api::management_canister::http_request::{HttpResponse, TransformArgs};
+use ic_exports::ic_cdk_timers::set_timer_interval;
 use ic_exports::ic_kit::ic;
 use ic_exports::Principal;
 
 use crate::error::{Error, Result};
+use crate::evm_canister::contract::ContractService;
 use crate::evm_canister::did::{Transaction, H160, H256, U256};
 use crate::state::http::{http, HttpRequest as ServeRequest, HttpResponse as ServeHttpResponse};
-use crate::state::{PairKey, Settings, State};
+use crate::state::{PairKey, PairPrice, Settings, State};
 use crate::timer::{sync_coinbase_price, sync_coingecko_price, transform};
 
 /// A canister to transfer funds between IC token canisters and EVM canister contracts.
@@ -52,13 +57,13 @@ impl OracleCanister {
         Ok(())
     }
 
-    /// Returns principal of EVM canister with which the minter canister works.
+    /// Returns principal of EVM canister with which the oracle canister works.
     #[query]
     pub fn get_evmc_principal(&self) -> Principal {
         self.state.config.get_evmc_principal()
     }
 
-    /// Sets principal of EVM canister with which the minter canister works.
+    /// Sets principal of EVM canister with which the oracle canister works.
     ///
     /// This method should be called only by current owner,
     /// else `Error::NotAuthorised` will be returned.
@@ -117,13 +122,19 @@ impl OracleCanister {
     /// This method should be called only by current owner,
     /// else `Error::NotAuthorised` will be returned.
     ///
-    /// If there is no pair for `pair`, `Error::PairNotFound` will be returned.
+    /// If there is no pair for `pair`, `Error::PairNotExist` will be returned.
     #[update]
     pub fn remove_pair(&mut self, pair: String) -> Result<()> {
         self.check_owner(ic::caller())?;
         self.state.pair_price.del_pair(PairKey(pair))
     }
 
+    /// Manually trigger http outcalls to update the price of the specified pair in this canister
+    ///
+    /// This method should be called only by current owner,
+    /// else `Error::NotAuthorised` will be returned.
+    ///
+    /// If there is no pair for `pair`, `Error::PairNotExist` will be returned.
     #[update]
     pub async fn update_price(&mut self, pairs: Vec<String>, api: ApiType) -> Result<()> {
         self.check_owner(ic::caller())?;
@@ -145,6 +156,46 @@ impl OracleCanister {
     }
 
     #[update]
+    pub async fn start_feed_price_timer(&self) {
+        set_timer_interval(Duration::from_secs(300), move || {
+            let pair_price = PairPrice::default();
+            let pair_keys = pair_price.get_pairs();
+            let pairs = pair_keys
+                .clone()
+                .into_iter()
+                .map(|p| p.0)
+                .collect::<Vec<String>>();
+            let timestamps = pair_keys
+                .iter()
+                .map(|p| {
+                    pair_price
+                        .get_latest_price(p)
+                        .expect("no latest price")
+                        .0
+                        .into()
+                })
+                .collect::<Vec<U256>>();
+            let prices = pair_keys
+                .iter()
+                .map(|p| {
+                    pair_price
+                        .get_latest_price(p)
+                        .expect("no latest price")
+                        .1
+                        .into()
+                })
+                .collect::<Vec<U256>>();
+
+            ic_cdk::spawn(async move {
+                let contract = ContractService::default();
+                let res = contract.update_answers(pairs, timestamps, prices).await;
+                ic::print(format!("res: {res:?}"));
+            });
+        });
+    }
+
+    /// Runs the procedure of registering this canister's account in evmc.
+    #[update]
     pub async fn register_self_in_evmc(
         &mut self,
         transaction: Transaction,
@@ -158,12 +209,13 @@ impl OracleCanister {
             .await
     }
 
+    /// Returns this canister's account in evmc if registered
     #[query]
     pub fn get_self_address_in_evmc(&self) -> Result<H160> {
         self.state.self_account.get_account()
     }
 
-    /// Initialize new AggregatorSingle smart contract
+    /// deploy the AggregatorSingle contract to evmc, and stored the tx hash.
     #[update]
     pub async fn deploy_aggregator_contract(&mut self) -> Result<H256> {
         self.check_owner(ic::caller())?;
@@ -171,6 +223,7 @@ impl OracleCanister {
         self.state.contract.init_contract().await
     }
 
+    // Make sure the deployment is successful and get the contract address from the transaction receipt
     #[update]
     pub async fn confirm_aggregator_contract(&mut self) -> Result<H160> {
         self.check_owner(ic::caller())?;
@@ -178,12 +231,13 @@ impl OracleCanister {
         self.state.contract.confirm_contract_address().await
     }
 
-    /// Returns the oracle contract address, associated with the given IC token canister principal.
+    /// Returns the aggregator contract address if deployed
     #[query]
     pub fn get_aggregator_contract_address(&self) -> Result<H160> {
         self.state.contract.get_contract()
     }
 
+    /// Call the Aggregator contract's `addPair` in evmc to increase the currency price pairs supported by the aggregator
     #[update]
     pub async fn add_pair_in_aggregator(
         &self,
@@ -200,6 +254,7 @@ impl OracleCanister {
             .await
     }
 
+    /// Call the Aggregator contract's `updateAnswers` in evmc to update the supported currency price pairs.
     #[update]
     pub async fn update_answers(
         &self,
