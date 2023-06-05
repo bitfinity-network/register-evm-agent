@@ -60,11 +60,11 @@ pub enum TransactionPoolError {
     #[error("transaction already exists in the pool")]
     TransactionAlreadyExists,
 
-    #[error("transaction nonce too high")]
-    NonceTooHigh { expected: U256, actual: U256 },
+    #[error("invalid transaction nonce, expected {expected}, actual {actual}")]
+    InvalidNonce { expected: U256, actual: U256 },
 
-    #[error("transaction nonce too low")]
-    NonceTooLow { expected: U256, actual: U256 },
+    #[error("the maximum amount of transactions per sender has been reached")]
+    TooManyTransactions,
 
     #[error("transaction gas price is too low to replace an existing transaction")]
     TxReplacementUnderpriced,
@@ -103,9 +103,9 @@ impl From<EvmError> for jsonrpc_core::error::Error {
                 expected: _,
             }
             | EvmError::Token(_) => -32010, // TRANSACTION_ERROR
-            EvmError::UnexpectedNonce | EvmError::InvalidGasPrice(_) => -32016, // ACCOUNT_ERROR
-            EvmError::NotAuthorized => -32002,                                  // NO_AUTHOR
-            _ => -32015,                                                        // EXECUTION_ERROR
+            EvmError::InvalidGasPrice(_) => -32016, // ACCOUNT_ERROR
+            EvmError::NotAuthorized => -32002,      // NO_AUTHOR
+            _ => -32015,                            // EXECUTION_ERROR
         };
         Error {
             code: ErrorCode::ServerError(code),

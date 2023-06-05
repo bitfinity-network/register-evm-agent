@@ -12,6 +12,8 @@ anyhow = "1.0"
 async-trait = "0.1"
 bytes = "1.4"
 candid = "0.8"
+# Using fixed chrono version. See: https://infinityswap.atlassian.net/browse/EPROD-45
+chrono = "=0.4.19"
 # infinityswap.atlassian.net/browse/EPROD-153 - We are currently depending on a commit, will be removed when new version is released
 ethers-core = { git = "https://github.com/infinity-swap/ethers-rs", default-features = false, package = "ethers-core", branch = "evmc_fork" }
 serde_bytes = "0.11"

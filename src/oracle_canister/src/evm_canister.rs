@@ -79,21 +79,16 @@ impl EvmCanisterImpl {
         result: Result<EvmResult<T>, (RejectionCode, std::string::String)>,
     ) -> Result<T, Error> {
         let result = self.process_call(result)?;
-        match &result {
-            Err(EvmError::TransactionPool(TransactionPoolError::NonceTooHigh {
-                expected, ..
-            }))
-            | Err(EvmError::TransactionPool(TransactionPoolError::NonceTooLow {
-                expected, ..
-            })) => {
-                NONCE_CELL.with(|nonce| {
-                    nonce
-                        .borrow_mut()
-                        .set(expected.clone())
-                        .expect("failed to update nonce");
-                });
-            }
-            _ => (),
+        if let Err(EvmError::TransactionPool(TransactionPoolError::InvalidNonce {
+            expected, ..
+        })) = &result
+        {
+            NONCE_CELL.with(|nonce| {
+                nonce
+                    .borrow_mut()
+                    .set(expected.clone())
+                    .expect("failed to update nonce");
+            });
         }
 
         result.map_err(|e| Error::Internal(format!("transaction error: {e}")))

@@ -12,23 +12,24 @@ export-api = []
 async-trait = { workspace = true }
 bytes = { workspace = true }
 candid = { workspace = true }
+chrono = { workspace = true }
+derive_more = { workspace = true }
+ethereum-types = { workspace = true }
+ethers-core = { workspace = true }
+hex = { workspace = true }
+jsonrpc-core = { workspace = true }
 ic-canister = { workspace = true }
 ic-exports = { workspace = true }
 ic-stable-structures = { workspace = true }
 is20-token = { workspace = true }
 mockall = { workspace = true }
-thiserror = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-url = { workspace = true }
-serde_bytes = { workspace = true }
-ethereum-types = { workspace = true }
-derive_more = { workspace = true }
-ethers-core = { workspace = true }
-hex = { workspace = true }
-rlp = { workspace = true }
-jsonrpc-core = { workspace = true }
 once_cell = { workspace = true }
+rlp = { workspace = true }
+serde = { workspace = true }
+serde_bytes = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+url = { workspace = true }
 
 
 [build-dependencies]

@@ -101,6 +101,7 @@ impl OracleCanister {
     }
 
     /// Return the latest n records of a price pair, or fewer if the price's amount fewer
+    #[query]
     pub fn get_prices(&self, pair: String, n: usize) -> Vec<(u64, u64)> {
         self.state.pair_price.get_prices(&PairKey(pair), n)
     }
@@ -207,6 +208,14 @@ impl OracleCanister {
             .self_account
             .register_account(transaction, signing_key)
             .await
+    }
+
+    #[update]
+    pub fn reset_self_account(&mut self) -> Result<()> {
+        self.check_owner(ic::caller())?;
+
+        self.state.self_account.reset();
+        Ok(())
     }
 
     /// Returns this canister's account in evmc if registered
