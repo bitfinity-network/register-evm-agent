@@ -166,26 +166,11 @@ impl OracleCanister {
                 .into_iter()
                 .map(|p| p.0)
                 .collect::<Vec<String>>();
-            let timestamps = pair_keys
+            let (timestamps, prices) = pair_keys
                 .iter()
-                .map(|p| {
-                    pair_price
-                        .get_latest_price(p)
-                        .expect("no latest price")
-                        .0
-                        .into()
-                })
-                .collect::<Vec<U256>>();
-            let prices = pair_keys
-                .iter()
-                .map(|p| {
-                    pair_price
-                        .get_latest_price(p)
-                        .expect("no latest price")
-                        .1
-                        .into()
-                })
-                .collect::<Vec<U256>>();
+                .map(|p| pair_price.get_latest_price(p).expect("no latest price"))
+                .map(|(t, p)| (t.into(), p.into()))
+                .unzip();
 
             ic_cdk::spawn(async move {
                 let contract = ContractService::default();

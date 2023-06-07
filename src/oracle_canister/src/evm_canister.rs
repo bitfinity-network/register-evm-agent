@@ -41,11 +41,13 @@ pub trait EvmCanister: Send {
         tx_hash: H256,
     ) -> Result<Option<TransactionReceipt>, Error>;
 
-    async fn deposit(&mut self, to: H160, amount: U256) -> Result<U256, Error>;
+    async fn mint_evm_tokens(&mut self, to: H160, amount: U256) -> Result<U256, Error>;
 
     async fn register_ic_agent(&mut self, transaction: Transaction) -> Result<(), Error>;
 
     async fn verify_registration(&mut self, signing_key: Vec<u8>) -> Result<(), Error>;
+
+    async fn is_address_registered(&self, address: H160) -> Result<bool, Error>;
 }
 
 #[derive(Default)]
@@ -165,9 +167,9 @@ impl EvmCanister for EvmCanisterImpl {
         self.process_call(res.map(|val| val.0))
     }
 
-    async fn deposit(&mut self, to: H160, amount: U256) -> Result<U256, Error> {
+    async fn mint_evm_tokens(&mut self, to: H160, amount: U256) -> Result<U256, Error> {
         let res: Result<(EvmResult<U256>,), _> =
-            ic::call(self.get_evm_canister_id(), "deposit_tokens", (to, amount)).await;
+            ic::call(self.get_evm_canister_id(), "mint_evm_tokens", (to, amount)).await;
 
         self.process_call_result(res.map(|val| val.0))
     }
@@ -192,6 +194,17 @@ impl EvmCanister for EvmCanisterImpl {
         .await;
 
         self.process_call_result(res.map(|val| val.0))
+    }
+
+    async fn is_address_registered(&self, address: H160) -> Result<bool, Error> {
+        let res: Result<(bool,), _> = ic::call(
+            self.get_evm_canister_id(),
+            "is_address_registered",
+            (address,),
+        )
+        .await;
+
+        self.process_call(res.map(|val| val.0))
     }
 }
 

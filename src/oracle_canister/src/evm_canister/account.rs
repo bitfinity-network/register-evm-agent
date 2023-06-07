@@ -50,10 +50,28 @@ impl Account {
 
         let mut evm_impl = EvmCanisterImpl::default();
 
-        // deposit tokens to from address
         let address = transaction.from.clone();
+
+        // check if the address is regestry
+        match evm_impl.is_address_registered(address.clone()).await {
+            Err(err) => {
+                self.reset();
+                return Err(err);
+            }
+            Ok(is_registered) => {
+                if is_registered {
+                    self.reset();
+                    return Err(Error::Internal(format!(
+                        "{} is already registered",
+                        address.clone()
+                    )));
+                }
+            }
+        }
+
+        // mint EVM native tokens to from address
         if let Err(err) = evm_impl
-            .deposit(address.clone(), REGISTRATION_FEE.into())
+            .mint_evm_tokens(address.clone(), REGISTRATION_FEE.into())
             .await
         {
             self.reset();
